@@ -13,8 +13,8 @@ if __name__ == '__main__':
     r = Robinhood(user, password)
     quote_info = r.quotes()
     print('quotes: {}'.format(quote_info))
-    # print('account: {}'.format(r.account_id()))
-    # print('most recent trade history: {}'.format(r.trade_history()['results'][:5]))
+    print('account: {}'.format(r.account_id()))
+    print('most recent trade history: {}'.format(r.trade_history()['results'][:5]))
 
     # Market order
     market_order_info = r.trade(
