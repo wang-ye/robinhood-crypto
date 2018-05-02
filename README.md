@@ -1,5 +1,5 @@
-# robinhood-crypto
-Robinhood Crypto APIs
+# Robinhood Crypto APIs
+This repo provides several key APIs for Robinhood Crypto, including authorization, quotes, historicals, order placement and status.
 
 # How to Use
 1. Install Python 3. I use anaconda for the python version management.
