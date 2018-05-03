@@ -15,7 +15,7 @@ cd robinhood-crypto
 pip install -e .
 ```
 
-3. You can now use the package by calling ``from robinhood_crypto_api import Robinhood``. Sample code:
+3. Some sample usage with the package.
 
 ```python
 from robinhood_crypto_api import RobinhoodCrypto
@@ -34,7 +34,7 @@ market_order_info = r.trade(
 )
 ```
 
-4. To Uninstall, you can run
+4. To uninstall, you can run
 
 ```shell
 pip uninstall Robinhood-Crypto-API
