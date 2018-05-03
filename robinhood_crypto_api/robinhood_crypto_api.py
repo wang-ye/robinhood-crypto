@@ -1,5 +1,4 @@
 """Robinhood Crypto API Utility."""
-
 import logging
 import uuid
 import requests
@@ -7,31 +6,31 @@ import requests
 LOG = logging.getLogger(__name__)
 
 
-class RobinhoodException(Exception):
+class RobinhoodCryptoException(Exception):
     pass
 
 
-class LoginException(RobinhoodException):
+class LoginException(RobinhoodCryptoException):
     pass
 
 
-class TokenExchangeException(RobinhoodException):
+class TokenExchangeException(RobinhoodCryptoException):
     pass
 
 
-class TradeException(RobinhoodException):
+class TradeException(RobinhoodCryptoException):
     pass
 
 
-class QuoteException(RobinhoodException):
+class QuoteException(RobinhoodCryptoException):
     pass
 
 
-class AccountNotFoundException(RobinhoodException):
+class AccountNotFoundException(RobinhoodCryptoException):
     pass
 
 
-class Robinhood:
+class RobinhoodCrypto:
     PAIRS = {
         'BTCUSD': '3d961844-d360-45fc-989b-f6fca761d511',
         'ETHUSD': '76637d50-c702-4ed1-bcb5-5b0732a81f48',
@@ -93,7 +92,7 @@ class Robinhood:
         }
 
         try:
-            data = self.session_request(Robinhood.ENDPOINTS['login'], json_payload=payload, timeout=5, method='post')
+            data = self.session_request(RobinhoodCrypto.ENDPOINTS['login'], json_payload=payload, timeout=5, method='post')
             access_token = data['access_token']
         except requests.exceptions.HTTPError as e:
             LOG.exception(e)
@@ -109,9 +108,9 @@ class Robinhood:
     # Return: dict
     # {'ask_price': '8836.3300', 'bid_price': '8801.0500', 'mark_price': '8818.6900', 'high_price': '9064.6400', 'low_price': '8779.9599', 'open_price': '8847.2400', 'symbol': 'BTCUSD', 'id': '3d961844-d360-45fc-989b-f6fca761d511', 'volume': '380373.1898'}
     def quotes(self, pair='BTCUSD'):
-        symbol = Robinhood.PAIRS[pair]
+        symbol = RobinhoodCrypto.PAIRS[pair]
         assert symbol, 'unknown pair {}'.format(pair)
-        url = Robinhood.ENDPOINTS['quotes'].format(symbol)
+        url = RobinhoodCrypto.ENDPOINTS['quotes'].format(symbol)
 
         try:
             data = self.session_request(url, method='get')
@@ -120,7 +119,7 @@ class Robinhood:
         return data
 
     def accounts(self):
-        url = Robinhood.ENDPOINTS['accounts']
+        url = RobinhoodCrypto.ENDPOINTS['accounts']
         try:
             data = self.session_request(url, method='get')
         except Exception as e:
@@ -159,18 +158,18 @@ class Robinhood:
     #     "updated_at":"2018-04-22T14:07:37.250180-04:00"
     # }
     def trade(self, pair, **kwargs):
-        assert pair in Robinhood.PAIRS.keys(), 'pair {} is not in {}.'.format(pair, Robinhood.PAIRS.keys())
+        assert pair in RobinhoodCrypto.PAIRS.keys(), 'pair {} is not in {}.'.format(pair, RobinhoodCrypto.PAIRS.keys())
         set(kwargs.keys()) == ['price', 'quantity', 'side', 'time_in_force', 'type']
         payload = {
             **{
                 'account_id': self._account_id,
-                'currency_pair_id': Robinhood.PAIRS[pair],
+                'currency_pair_id': RobinhoodCrypto.PAIRS[pair],
                 'ref_id': str(uuid.uuid4()),
             },
             **kwargs
         }
         try:
-            res = self.session_request(Robinhood.ENDPOINTS['orders'], json_payload=payload, method='post', timeout=5)
+            res = self.session_request(RobinhoodCrypto.ENDPOINTS['orders'], json_payload=payload, method='post', timeout=5)
         except Exception as e:
             raise TradeException()
         return res
@@ -178,7 +177,7 @@ class Robinhood:
     # TODO(ye): implement pagination.
     def trade_history(self):
         try:
-            res = self.session_request(Robinhood.ENDPOINTS['orders'], method='get', timeout=5)
+            res = self.session_request(RobinhoodCrypto.ENDPOINTS['orders'], method='get', timeout=5)
         except Exception as e:
             raise TradeException()
         return res
@@ -188,7 +187,7 @@ class Robinhood:
     # 'account_id': 'abcd', 'cancel_url': None, 'created_at': '2018-04-22T14:07:37.103809-04:00', 'cumulative_quantity': '0.000111860000000000', 'currency_pair_id': '3d961844-d360-45fc-989b-f6fca761d511', 'executions': [{'effective_price': '8948.500000000000000000', 'id': 'hijk', 'quantity': '0.000111860000000000', 'timestamp': '2018-04-22T14:07:37.329000-04:00'}], 'id': 'order_id', 'last_transaction_at': '2018-04-22T14:07:37.329000-04:00', 'price': '9028.670000000000000000', 'quantity': '0.000111860000000000', 'ref_id': 'ref_id', 'side': 'buy', 'state': 'filled', 'time_in_force': 'gtc', 'type': 'market', 'updated_at': '2018-04-22T14:07:38.956584-04:00'
     # }
     def order_status(self, order_id):
-        url = Robinhood.ENDPOINTS['order_status'].format(order_id)
+        url = RobinhoodCrypto.ENDPOINTS['order_status'].format(order_id)
         try:
             res = self.session_request(url, method='get')
         except Exception as e:
@@ -196,7 +195,7 @@ class Robinhood:
         return res
 
     def order_cancel(self, order_id):
-        url = Robinhood.ENDPOINTS['order_cancel'].format(order_id)
+        url = RobinhoodCrypto.ENDPOINTS['order_cancel'].format(order_id)
         try:
             res = self.session_request(url, method='post')
         except Exception as e:

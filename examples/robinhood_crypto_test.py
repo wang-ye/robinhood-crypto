@@ -1,5 +1,5 @@
 import getpass
-from robinhood_crypto_api import Robinhood
+from robinhood_crypto_api import RobinhoodCrypto
 
 
 def read_credentials():
@@ -10,7 +10,7 @@ def read_credentials():
 
 if __name__ == '__main__':
     user, password = read_credentials()
-    r = Robinhood(user, password)
+    r = RobinhoodCrypto(user, password)
     quote_info = r.quotes()
     print('quotes: {}'.format(quote_info))
     print('account: {}'.format(r.account_id()))
