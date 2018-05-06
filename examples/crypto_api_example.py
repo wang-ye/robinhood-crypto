@@ -8,8 +8,14 @@ def read_credentials():
     return username, password
 
 
+def read_credentials_from_file(file_name):
+    username, password = [x.strip() for x in open(file_name).readlines()]
+    return username, password
+
+
 if __name__ == '__main__':
-    user, password = read_credentials()
+    user, password = read_credentials_from_file('../pass.txt')
+    # user, password = read_credentials()
     r = RobinhoodCrypto(user, password)
     quote_info = r.quotes()
     print('quotes: {}'.format(quote_info))

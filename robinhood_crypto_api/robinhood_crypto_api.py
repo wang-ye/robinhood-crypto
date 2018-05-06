@@ -1,7 +1,9 @@
 """Robinhood Crypto API Utility."""
 import logging
 import uuid
+from functools import wraps
 import requests
+from requests.exceptions import HTTPError
 
 LOG = logging.getLogger(__name__)
 
@@ -30,6 +32,28 @@ class AccountNotFoundException(RobinhoodCryptoException):
     pass
 
 
+def reauth(f):
+    @wraps(f)
+    def function_reauth(*args, **kwargs):
+        res = None
+        try:
+            res = f(*args, **kwargs)
+        except HTTPError as e:
+            if e.response.text and ('Invalid Authorization header' in e.response.text):
+                LOG.error('Experienced invalid auth header, reauth ....')
+                rb = args[0]
+                # Reset session and auth headers.
+                acc_token = rb.get_access_token(rb.username, rb.password)
+                rb.setup_for_api_call(acc_token)
+                res = f(*args, **kwargs)
+            else:
+                raise e
+        except Exception as e:
+            raise e
+        return res
+    return function_reauth
+
+
 class RobinhoodCrypto:
     PAIRS = {
         'BTCUSD': '3d961844-d360-45fc-989b-f6fca761d511',
@@ -37,7 +61,7 @@ class RobinhoodCrypto:
     }
 
     ENDPOINTS = {
-        'login': 'https://api.robinhood.com/oauth2/token/',
+        'auth': 'https://api.robinhood.com/oauth2/token/',
         'currency_pairs': 'nummus.robinhood.com/currency_pairs',
         'quotes': 'https://api.robinhood.com/marketdata/forex/quotes/{}/',
         'historicals': 'https://api.robinhood.com/marketdata/forex/historicals/{}/',
@@ -47,41 +71,64 @@ class RobinhoodCrypto:
         'accounts': "https://nummus.robinhood.com/accounts",
     }
 
-    def __init__(self, username, password):
-        self._session = requests.session()
-        self._session.headers = {
-            "Accept": "*/*",
-            "Accept-Encoding": "gzip, deflate",
-            "Accept-Language": "en;q=1, fr;q=0.9, de;q=0.8, ja;q=0.7, nl;q=0.6, it;q=0.5",
-            "Content-Type": "application/json",
-            "Connection": "keep-alive",
-            "Origin": "https://robinhood.com",
-            "User-Agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36",
-        }
-        self.login(username, password)
+    SHARED_HEADERS = {
+        "accept-encoding": "gzip, deflate",
+        "accept-language": "en;q=1, fr;q=0.9, de;q=0.8, ja;q=0.7, nl;q=0.6, it;q=0.5",
+        "content-type": "application/json",
+        "connection": "keep-alive",
+        "origin": "https://robinhood.com",
+        "user-agent": "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_13_2) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/65.0.3325.181 Safari/537.36",
+    }
+
+    def __init__(self, username='', password='', access_token=''):
+        self.username = username
+        self.password = password
+        if access_token:
+            _access_token = access_token
+        else:
+            _access_token = self.get_access_token(self.username, self.password)
+        self.setup_for_api_call(_access_token)
+
+    def setup_for_api_call(self, access_token):
+        self._api_session = requests.session()
+        self._api_session.headers = self.construct_api_header(access_token)
+        # account id is needed for many api calls. Also cache it.
         self._account_id = self.account_id()
 
-    def login(self, username, password):
-        access_token = self.get_access_token(username, password)
-        self.setup_header_for_json_request(access_token)
+    def construct_auth_header(self):
+        return {**RobinhoodCrypto.SHARED_HEADERS, **{"accept": "*/*"}}
+
+    def construct_api_header(self, access_token):
+        return {
+            **RobinhoodCrypto.SHARED_HEADERS,
+            **{
+                'authorization': 'Bearer ' + access_token,
+                "accept": "application/json",
+            }
+        }
 
     # Session request util.
     # Both the payload and response are json format.
-    def session_request(self, url, json_payload=None, timeout=5, method='post'):
+    @reauth
+    def session_request(self, url, json_payload=None, timeout=5, method='post', request_session=None):
+        session = request_session if request_session else self._api_session
         try:
-            req = self._session.request(method, url, json=json_payload, timeout=timeout)
-            req.raise_for_status()
+            resp = session.request(method, url, json=json_payload, timeout=timeout)
+            # import pdb; pdb.set_trace()
+            resp.raise_for_status()
         except Exception as e:
-            LOG.error('Error in session_request calls. Request body {}, headers {}'.format(req.request.body, req.request.headers))
+            LOG.debug('Error in session request calls. Request body {}, headers {}, content {}'.format(resp.request.body, resp.request.headers, resp.content))
             LOG.exception(e)
             raise e
 
-        return req.json()
+        return resp.json()
 
     # Autheticate user with username/password.
     # Returns: access_token for API auth.
     # Throw exception if it fails.
     def get_access_token(self, username, password):
+        auth_session = requests.session()
+        auth_session.headers = self.construct_auth_header()
         payload = {
             'password': password,
             'username': username,
@@ -92,18 +139,14 @@ class RobinhoodCrypto:
         }
 
         try:
-            data = self.session_request(RobinhoodCrypto.ENDPOINTS['login'], json_payload=payload, timeout=5, method='post')
+            data = self.session_request(RobinhoodCrypto.ENDPOINTS['auth'], json_payload=payload, timeout=5, method='post', request_session=auth_session)
+            # import pdb; pdb.set_trace()
             access_token = data['access_token']
         except requests.exceptions.HTTPError as e:
             LOG.exception(e)
             raise LoginException()
 
         return access_token
-
-    def setup_header_for_json_request(self, access_token):
-        self._session.headers['Authorization'] = 'Bearer ' + access_token
-        self._session.headers['Content-Type'] = 'application/json'
-        self._session.headers['Accept'] = 'application/json'
 
     # Return: dict
     # {'ask_price': '8836.3300', 'bid_price': '8801.0500', 'mark_price': '8818.6900', 'high_price': '9064.6400', 'low_price': '8779.9599', 'open_price': '8847.2400', 'symbol': 'BTCUSD', 'id': '3d961844-d360-45fc-989b-f6fca761d511', 'volume': '380373.1898'}
