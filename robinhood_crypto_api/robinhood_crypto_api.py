@@ -253,7 +253,7 @@ class RobinhoodCrypto:
     :param bounds: 24_7,regular,extended,trading
     
     """
-    def historicals(self, pair, interval='5minute', span='day',  bounds='24_7'):
+    def historicals(self, pair='BTCUSD', interval='5minute', span='day',  bounds='24_7'):
         symbol = RobinhoodCrypto.PAIRS[pair]
         assert symbol, 'unknown pair {}'.format(pair)
         url = RobinhoodCrypto.ENDPOINTS['historicals'].format(symbol, interval, span, bounds)
