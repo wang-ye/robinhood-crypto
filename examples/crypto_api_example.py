@@ -17,6 +17,8 @@ if __name__ == '__main__':
     user, password = read_credentials_from_file('../pass.txt')
     # user, password = read_credentials()
     r = RobinhoodCrypto(user, password)
+    historical_info = r.historical('BTCUSD')
+    print('historical: {}'.format(historical_info))
     quote_info = r.quotes()
     print('quotes: {}'.format(quote_info))
     print('account: {}'.format(r.account_id()))

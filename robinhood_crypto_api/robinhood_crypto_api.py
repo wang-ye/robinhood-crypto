@@ -64,7 +64,7 @@ class RobinhoodCrypto:
         'auth': 'https://api.robinhood.com/oauth2/token/',
         'currency_pairs': 'nummus.robinhood.com/currency_pairs',
         'quotes': 'https://api.robinhood.com/marketdata/forex/quotes/{}/',
-        'historicals': 'https://api.robinhood.com/marketdata/forex/historicals/{}/',
+        'historicals': 'https://api.robinhood.com/marketdata/forex/historicals/{}/?interval={}&span={}&bounds={}',
         'orders': 'https://nummus.robinhood.com/orders/',
         'order_status': 'https://nummus.robinhood.com/orders/{}',  # Order id
         'order_cancel': 'https://nummus.robinhood.com/orders/{}/cancel/',
@@ -244,3 +244,22 @@ class RobinhoodCrypto:
         except Exception as e:
             raise e
         return res
+
+    """
+    Return { 'data_points': [{ 'begins_at': '2018-05-07T00:20:00Z', 'open_price': '9636.2650', 'close_price': '9598.4300', 'high_price': '9638.0600', 'low_price': '9594.3700', 'volume': '0.0000', 'session': 'reg', 'interpolated': False }], 'bounds': '24_7', 'interval': '5minute', 'span': 'day', 'symbol': 'BTCUSD', 'id': '3d961844-d360-45fc-989b-f6fca761d511', 'open_price': None, 'open_time': None, 'previous_close_price': None, 'previous_close_time': None }
+    :param pair: BTCUSD,ETHUSD
+    :param interval: optional 15second,5minute,10minute,hour,day,week
+    :param span: optional hour,day,year,5year,all
+    :param bounds: 24_7,regular,extended,trading
+    
+    """
+    def historicals(self, pair='BTCUSD', interval='5minute', span='day',  bounds='24_7'):
+        symbol = RobinhoodCrypto.PAIRS[pair]
+        assert symbol, 'unknown pair {}'.format(pair)
+        url = RobinhoodCrypto.ENDPOINTS['historicals'].format(symbol, interval, span, bounds)
+        try:
+            res = self.session_request(url, method='get')
+        except Exception as e:
+            raise e
+        return res
+
