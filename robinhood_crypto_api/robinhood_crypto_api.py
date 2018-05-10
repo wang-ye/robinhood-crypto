@@ -68,7 +68,8 @@ class RobinhoodCrypto:
         'orders': 'https://nummus.robinhood.com/orders/',
         'order_status': 'https://nummus.robinhood.com/orders/{}',  # Order id
         'order_cancel': 'https://nummus.robinhood.com/orders/{}/cancel/',
-        'accounts': "https://nummus.robinhood.com/accounts",
+        'accounts': 'https://nummus.robinhood.com/accounts',
+        'holdings': 'https://nummus.robinhood.com/holdings/',
     }
 
     SHARED_HEADERS = {
@@ -263,3 +264,39 @@ class RobinhoodCrypto:
             raise e
         return res
 
+    """
+    Returns [{
+        "account_id": "fad55b1b-1142-4c84-8bb3-1e65edfa37d4",
+        "cost_bases": [{
+            "currency_id": "1072fc76-1862-41ab-82c2-485837590762",
+            "direct_cost_basis": "0.000000000000000000",
+            "direct_quantity": "0.000000000000000000",
+            "id": "7d9b074c-e87e-46de-8654-0e1ef9c30459",
+            "marked_cost_basis": "0.000000000000000000",
+            "marked_quantity": "0.000000000000000000"
+        }],
+        "created_at": "2018-05-08T19:23:52.094139-04:00",
+        "currency": {
+            "code": "BTC",
+            "id": "d674efea-e623-4396-9026-39574b92b093",
+            "increment": "0.000000010000000000",
+            "name": "Bitcoin",
+            "type": "cryptocurrency"
+        },
+        "id": "76cc6887-75ee-4d6b-ad46-01a12904fb89",
+        "quantity": "0.000000000000000000",
+        "quantity_available": "0.000000000000000000",
+        "quantity_held_for_buy": "0.000000000000000000",
+        "quantity_held_for_sell": "0.000000000000000000",
+        "updated_at": "2018-05-10T07:07:36.091597-04:00"
+    }]
+    """
+    def holdings(self):
+        try:
+            res = self.session_request(RobinhoodCrypto.ENDPOINTS['holdings'], method='get', timeout=5)
+        except Exception as e:
+            raise e
+        if 'results' in res:
+            res = [x for x in res['results']]
+            return res
+        return []
