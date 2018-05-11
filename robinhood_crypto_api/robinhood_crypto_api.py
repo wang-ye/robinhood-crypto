@@ -68,8 +68,10 @@ class RobinhoodCrypto:
         'orders': 'https://nummus.robinhood.com/orders/',
         'order_status': 'https://nummus.robinhood.com/orders/{}',  # Order id
         'order_cancel': 'https://nummus.robinhood.com/orders/{}/cancel/',
-        'accounts': 'https://nummus.robinhood.com/accounts',
+        'nummus_accounts': 'https://nummus.robinhood.com/accounts/',
         'holdings': 'https://nummus.robinhood.com/holdings/',
+        'api_accounts': 'https://api.robinhood.com/accounts/',
+        'portfolios': 'https://api.robinhood.com/accounts/{}/portfolio/'
     }
 
     SHARED_HEADERS = {
@@ -95,6 +97,7 @@ class RobinhoodCrypto:
         self._api_session.headers = self.construct_api_header(access_token)
         # account id is needed for many api calls. Also cache it.
         self._account_id = self.account_id()
+        self._account_number = self.account_number()
 
     def construct_auth_header(self):
         return {**RobinhoodCrypto.SHARED_HEADERS, **{"accept": "*/*"}}
@@ -162,8 +165,9 @@ class RobinhoodCrypto:
             raise QuoteException()
         return data
 
-    def accounts(self):
-        url = RobinhoodCrypto.ENDPOINTS['accounts']
+    def accounts(self, endpoint='api_accounts'):
+        assert endpoint in RobinhoodCrypto.ENDPOINTS.keys()
+        url = RobinhoodCrypto.ENDPOINTS[endpoint]
         try:
             data = self.session_request(url, method='get')
         except Exception as e:
@@ -173,9 +177,18 @@ class RobinhoodCrypto:
         return []
 
     def account_id(self):
-        accounts_info = self.accounts()
+        accounts_info = self.accounts(endpoint='nummus_accounts')
         if accounts_info:
             return accounts_info[0]['id']
+        else:
+            LOG.error('account cannot be retrieved')
+            raise AccountNotFoundException()
+        return None
+
+    def account_number(self):
+        accounts_info = self.accounts(endpoint='api_accounts')
+        if accounts_info:
+            return accounts_info[0]['account_number']
         else:
             LOG.error('account cannot be retrieved')
             raise AccountNotFoundException()
@@ -300,3 +313,33 @@ class RobinhoodCrypto:
             res = [x for x in res['results']]
             return res
         return []
+
+    """
+    Returns {
+        'unwithdrawable_grants': '0.0000',
+        'account': 'https://api.robinhood.com/accounts/5Q3S4FCX/',
+        'excess_maintenance_with_uncleared_deposits': '0.0000',
+        'url': 'https://api.robinhood.com/portfolios/5QW64535/',
+        'excess_maintenance': '0.0000',
+        'market_value': '0.0000',
+        'withdrawable_amount': '0.0000',
+        'last_core_market_value': '0.0000',
+        'unwithdrawable_deposits': '0.0000',
+        'extended_hours_equity': '0.0000',
+        'excess_margin': '197.0700',
+        'excess_margin_with_uncleared_deposits': '0.0000',
+        'equity': '0.0000',
+        'last_core_equity': '0.0000',
+        'adjusted_equity_previous_close': '0.0000',
+        'equity_previous_close': '-0.0000',
+        'start_date': '2016-03-14',
+        'extended_hours_market_value': '0.0000'
+    }
+    """
+    def portfolios(self):
+        url = RobinhoodCrypto.ENDPOINTS['portfolios'].format(self._account_number)
+        try:
+            res = self.session_request(url, method='get')
+        except Exception as e:
+            raise e
+        return res
