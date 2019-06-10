@@ -4,6 +4,7 @@ import uuid
 from functools import wraps
 import requests
 from requests.exceptions import HTTPError
+import random
 
 LOG = logging.getLogger(__name__)
 
@@ -132,12 +133,34 @@ class RobinhoodCrypto:
 
         return resp.json()
 
+    # Copied directly from https://github.com/Jamonek/Robinhood/issues/176.
+    def GenerateDeviceToken(self):
+        rands = []
+        for i in range(0,16):
+            r = random.random()
+            rand = 4294967296.0 * r
+            rands.append((int(rand) >> ((3 & i) << 3)) & 255)
+
+        hexa = []
+        for i in range(0,256):
+            hexa.append(str(hex(i+256)).lstrip("0x").rstrip("L")[1:])
+
+        id = ""
+        for i in range(0,16):
+            id += hexa[rands[i]]
+
+            if (i == 3) or (i == 5) or (i == 7) or (i == 9):
+                id += "-"
+        return id
+
     # Autheticate user with username/password.
     # Returns: access_token for API auth.
     # Throw exception if it fails.
-    def get_access_token(self, username, password):
+    def get_access_token(self, username, password, mfa_code=None):
         auth_session = requests.session()
         auth_session.headers = self.construct_auth_header()
+        if not self.device_token:
+            self.device_token = self.GenerateDeviceToken()
         payload = {
             'password': password,
             'username': username,
@@ -145,16 +168,22 @@ class RobinhoodCrypto:
             "scope": "internal",
             "client_id": "c82SH0WZOsabOXGP2sxqcj34FxkvfnWRZBKlBjFS",
             "expires_in": 86400,
+            "device_token": self.device_token,
+            "challenge_type": "sms"
         }
+
+        if mfa_code:
+            payload['mfa_code'] = mfa_code
 
         try:
             data = self.session_request(RobinhoodCrypto.ENDPOINTS['auth'], json_payload=payload, timeout=5, method='post', request_session=auth_session)
-            # import pdb; pdb.set_trace()
+            if 'mfa_required' in data.keys():
+                mfa_code = input("MFA: ")
+                return self.get_access_token(username, password, mfa_code)
             access_token = data['access_token']
         except requests.exceptions.HTTPError as e:
             LOG.exception(e)
             raise LoginException()
-
         return access_token
 
     # Return: dict
@@ -270,7 +299,7 @@ class RobinhoodCrypto:
     :param interval: optional 15second,5minute,10minute,hour,day,week
     :param span: optional hour,day,year,5year,all
     :param bounds: 24_7,regular,extended,trading
-    
+
     """
     def historicals(self, pair='BTCUSD', interval='5minute', span='day',  bounds='24_7'):
         symbol = RobinhoodCrypto.PAIRS[pair]
