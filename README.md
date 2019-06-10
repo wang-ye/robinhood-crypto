@@ -2,6 +2,8 @@
 This repo provides several key APIs for Robinhood Crypto, including authorization, quotes, historicals, order placement and status.
 
 # How to Use
+Before using this package, please turn on 2FA in your robinhood account. You will also get notifications for inputting your MFA code (6-digits). Currently it assumes you use SMS for the MFA code. Other authentication approaches might be supported in the future.
+
 1. This package goes with Python 3. I use anaconda for the python version management. This will also configure the pip accordingly.
 
 ```shell
@@ -21,6 +23,8 @@ pip install -e .
 from robinhood_crypto_api import RobinhoodCrypto
 # user/password are your Robinhood login credentials
 r = RobinhoodCrypto(user, password)
+# You are likely to get get shell notifications for inputting your MFA 6-digit codes here.
+# Just type in the number you get from SMS.
 # Current BTC quotes.
 quote_info = r.quotes()
 # Market order to buy/sell BTC
