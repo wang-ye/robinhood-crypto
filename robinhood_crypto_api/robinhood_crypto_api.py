@@ -92,6 +92,7 @@ class RobinhoodCrypto:
     def __init__(self, username='', password='', access_token=''):
         self.username = username
         self.password = password
+        self.device_token = None
         if access_token:
             _access_token = access_token
         else:
